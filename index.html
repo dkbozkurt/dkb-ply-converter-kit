@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playable Ads · AppLovin to GoogleAds Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="converter.js"></script>
+<style>
+  :root {
+    --bg: #0f1620;
+    --panel: #161f2b;
+    --panel-2: #1b2735;
+    --line: #243140;
+    --ink: #e6edf3;
+    --muted: #8a99a8;
+    --faint: #5b6b7a;
+    --source: #3ec5c0;
+    --target: #f0a830;
+    --good: #6fc36a;
+    --bad: #e06c5a;
+    --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 80% -10%, #18283a 0%, var(--bg) 55%);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  header { margin-bottom: 36px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow b { color: var(--source); font-weight: 600; }
+  .eyebrow i { color: var(--target); font-weight: 600; font-style: normal; }
+  .eyebrow .arrow { color: var(--faint); }
+  h1 {
+    font-size: 40px;
+    line-height: 1.05;
+    margin: 14px 0 8px;
+    letter-spacing: -.02em;
+    font-weight: 680;
+  }
+  .subtitle {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+  }
+  .subtitle b { color: var(--source); font-weight: 600; }
+  .subtitle i { color: var(--target); font-weight: 600; font-style: normal; }
+  .lede { color: var(--muted); max-width: 56ch; margin: 0; }
+
+  /* signature: the conversion pipeline */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 32px 0;
+  }
+  .stage {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 12px 14px;
+    background: var(--panel);
+    position: relative;
+    overflow: hidden;
+    transition: border-color .25s, background .25s;
+  }
+  .stage .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .stage .t {
+    font-size: 13px;
+    margin-top: 4px;
+    color: var(--muted);
+    transition: color .25s;
+  }
+  .stage::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0;
+    height: 2px; width: 0;
+    background: var(--target);
+    transition: width .4s ease;
+  }
+  .stage.run .t { color: var(--ink); }
+  .stage.run { border-color: var(--target); background: var(--panel-2); }
+  .stage.run::after { width: 100%; }
+  .stage.run .n { color: var(--target); }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-weight: 600;
+  }
+
+  .drop {
+    display: block;
+    border: 1.5px dashed rgba(62,197,192,.45);
+    border-radius: 12px;
+    padding: 34px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    background: rgba(62,197,192,.08);
+  }
+  .drop:hover, .drop.over { border-color: var(--source); background: rgba(62,197,192,.16); }
+  .drop .big { font-size: 16px; font-weight: 600; }
+  .drop .small { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .drop.has-file { border-style: solid; border-color: var(--source); padding: 16px 18px; }
+  .drop.has-file #dropBody { display: flex; align-items: center; gap: 14px; text-align: left; }
+  .filechip {
+    width: 40px; height: 40px; border-radius: 9px; flex: none;
+    background: rgba(62,197,192,.14); color: var(--source);
+    display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 700;
+  }
+  .fname { font-weight: 600; word-break: break-all; }
+  .fmeta { color: var(--muted); font-size: 13px; }
+  input[type=file] { display: none; }
+
+  .opts { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: var(--muted); font-size: 14px; }
+  .opts input { accent-color: var(--target); width: 16px; height: 16px; }
+
+  .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  button {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .06s, filter .2s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--target); color: #1a1205; }
+  .btn-primary:not(:disabled):hover { filter: brightness(1.08); }
+  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn-ghost:not(:disabled):hover { border-color: var(--muted); }
+  :focus-visible { outline: 2px solid var(--source); outline-offset: 2px; }
+
+  .report { display: none; }
+  .report.show { display: block; }
+  .srcline { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 14px; }
+  .tag { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 6px; font-weight: 600; }
+  .tag.src { background: rgba(62,197,192,.14); color: var(--source); }
+  .tag.tgt { background: rgba(240,168,48,.14); color: var(--target); }
+
+  .log { font-family: var(--mono); font-size: 13px; line-height: 1.85; margin: 0; }
+  .log li { list-style: none; color: var(--muted); }
+  .log li::before { content: "› "; color: var(--good); }
+
+  .files { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .frow { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 13px; padding: 5px 0; color: var(--muted); }
+  .frow .p { color: var(--ink); }
+  .total { margin-top: 8px; font-weight: 600; color: var(--ink); border-top: 1px dashed var(--line); padding-top: 8px; }
+
+  .note { color: var(--faint); font-size: 12.5px; margin-top: 20px; line-height: 1.7; }
+  .note code { font-family: var(--mono); color: var(--muted); }
+  .err { color: var(--bad); font-family: var(--mono); font-size: 13px; margin-top: 12px; display: none; }
+  .err.show { display: block; }
+
+  @media (max-width: 620px) {
+    h1 { font-size: 30px; }
+    .pipeline { grid-template-columns: repeat(2, 1fr); }
+    .pipeline .stage:last-child { grid-column: span 2; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><b>AppLovin</b><span class="arrow">———▶</span><i>Google Ads</i></div>
+    <h1>Playable Ads</h1>
+    <p class="subtitle"><b>AppLovin</b> to <i>GoogleAds</i> Converter</p>
+    <p class="lede">Drop an exported AppLovin playable. The tool strips the AppLovin
+      integration, routes the CTA through a neutral adapter, grafts on the Google Ads
+      ExitApi layer, and hands back an upload-ready package — the game itself is never touched.</p>
+  </header>
+
+  <div class="pipeline" id="pipeline">
+    <div class="stage" data-k="analyze"><div class="n">01</div><div class="t">Analyze</div></div>
+    <div class="stage" data-k="strip"><div class="n">02</div><div class="t">Strip AppLovin</div></div>
+    <div class="stage" data-k="generic"><div class="n">03</div><div class="t">Neutral adapter</div></div>
+    <div class="stage" data-k="google"><div class="n">04</div><div class="t">Google layer</div></div>
+    <div class="stage" data-k="package"><div class="n">05</div><div class="t">Package</div></div>
+  </div>
+
+  <div class="card">
+    <h2>1 · Source playable</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Select AppLovin playable HTML file">
+      <div id="dropBody">
+        <div class="big">Drop AppLovin HTML here</div>
+        <div class="small">or click to browse — index.html / playable.html</div>
+      </div>
+      <input type="file" id="file" accept=".html,.htm,text/html">
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Convert</h2>
+    <div class="actions">
+      <button class="btn-primary" id="convert" disabled>Convert to Google Ads</button>
+      <button class="btn-ghost" id="reset" disabled>Reset</button>
+    </div>
+  </div>
+
+  <div class="card report" id="report">
+    <h2>3 · Result</h2>
+    <div class="srcline">
+      <span class="tag src" id="srcTag">applovin</span>
+      <span class="arrow" style="color:var(--faint)">converted to</span>
+      <span class="tag tgt">google ads</span>
+    </div>
+    <ul class="log" id="log"></ul>
+    <div class="files" id="files"></div>
+    <div class="actions" style="margin-top:20px">
+      <button class="btn-primary" id="download">Download google_playable.zip</button>
+    </div>
+    <p class="note">
+      Validate the result in the <code>Google Playable Ad Testing Tool</code> before launch. Images stay
+      inlined and are decoded at runtime, so the package keeps to a handful of files rather than externalizing
+      every sprite — both layouts are valid for App-campaign playables.
+    </p>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const drop = $("drop"), fileInput = $("file");
+  const convertBtn = $("convert"), resetBtn = $("reset"), downloadBtn = $("download");
+  const report = $("report"), logEl = $("log"), filesEl = $("files"), errEl = $("err");
+  const stages = [...document.querySelectorAll(".stage")];
+
+  let source = null;   // { name, text }
+  let result = null;   // { html, files, source, log }
+  let zipBlob = null;
+
+  const kb = (bytes) => (bytes / 1024).toFixed(1) + " KB";
+  const byteLen = (s) => {
+    if (typeof s === "string") return new Blob([s]).size;
+    if (s && s.byteLength != null) return s.byteLength;
+    return new Blob([s]).size;
+  };
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.classList.add("show");
+  }
+  function clearError() { errEl.classList.remove("show"); errEl.textContent = ""; }
+
+  function setFile(file) {
+    clearError();
+    if (!/\.html?$/i.test(file.name)) {
+      showError("That isn't an HTML entry point. Export the playable as index.html or playable.html.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      source = { name: file.name, text: reader.result };
+      drop.classList.add("has-file");
+      $("dropBody").innerHTML =
+        '<div class="filechip">HTML</div>' +
+        '<div><div class="fname">' + file.name + '</div>' +
+        '<div class="fmeta">' + kb(file.size) + ' · ready to convert</div></div>';
+      convertBtn.disabled = false;
+      resetBtn.disabled = false;
+    };
+    reader.onerror = () => showError("Couldn't read that file. Try re-exporting it.");
+    reader.readAsText(file);
+  }
+
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener("change", (e) => { if (e.target.files[0]) setFile(e.target.files[0]); });
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+  function lightStage(i) {
+    return new Promise((res) => setTimeout(() => { if (stages[i]) stages[i].classList.add("run"); res(); }, 220));
+  }
+
+  async function runPipeline() {
+    for (const s of stages) s.classList.remove("run");
+    for (let i = 0; i < stages.length; i++) await lightStage(i);
+  }
+
+  convertBtn.addEventListener("click", async () => {
+    clearError();
+    convertBtn.disabled = true;
+    report.classList.remove("show");
+    try {
+      const pipeline = runPipeline();
+      result = PlayableConverter.convertToGoogleAds(source.text, { externalizeAssets: true });
+
+      // Decode embedded <img data-src122> images to loose files and rewrite
+      // the tags to relative paths (assets/<id>), matching Google's layout.
+      const extracted = PlayableConverter.extractAndRewriteImages(result.html, result.log);
+      result.html = extracted.html;
+      for (const [id, data] of Object.entries(extracted.assets)) {
+        result.files["assets/" + id] = data;
+      }
+
+      const zip = new JSZip();
+      zip.file("index.html", result.html);
+      for (const [path, content] of Object.entries(result.files)) zip.file(path, content);
+      zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      await pipeline;
+
+      renderReport();
+    } catch (e) {
+      showError("Conversion failed: " + e.message);
+      convertBtn.disabled = false;
+    }
+  });
+
+  function renderReport() {
+    $("srcTag").textContent = result.source;
+    logEl.innerHTML = result.log.map((l) => "<li>" + l + "</li>").join("");
+
+    const rows = [["index.html", byteLen(result.html)]];
+    const bundleEntries = [];
+    for (const [p, c] of Object.entries(result.files)) {
+      if (/^assets\/assets\/bundles\//.test(p)) bundleEntries.push([p, byteLen(c)]);
+      else rows.push([p, byteLen(c)]);
+    }
+    if (bundleEntries.length) {
+      const bundleTotal = bundleEntries.reduce((a, [, n]) => a + n, 0);
+      rows.push([
+        "assets/assets/bundles/ — " + bundleEntries.length + " files",
+        bundleTotal,
+      ]);
+    }
+    const fileCount = 1 + Object.keys(result.files).length;
+    filesEl.innerHTML =
+      rows.map(([p, n]) => '<div class="frow"><span class="p">' + p + '</span><span>' + kb(n) + "</span></div>").join("") +
+      '<div class="frow total"><span>google_playable.zip (' + fileCount + " files)</span><span>" + kb(zipBlob.size) + "</span></div>";
+
+    report.classList.add("show");
+    report.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  downloadBtn.addEventListener("click", () => {
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "google_playable.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  resetBtn.addEventListener("click", () => location.reload());
+</script>
+</body>
+</html>
