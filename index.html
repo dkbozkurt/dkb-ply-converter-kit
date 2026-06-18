@@ -178,6 +178,11 @@
   .log li { list-style: none; color: var(--muted); }
   .log li::before { content: "› "; color: var(--good); }
 
+  .result-block { padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--line); }
+  .result-block:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+  .filelist { margin-top: 8px; display: grid; gap: 2px; }
+  .filelist .fname { font-weight: 500; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+
   .files { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
   .frow { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 13px; padding: 5px 0; color: var(--muted); }
   .frow .p { color: var(--ink); }
@@ -216,13 +221,13 @@
   </div>
 
   <div class="card">
-    <h2>1 · Source playable</h2>
-    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Select AppLovin playable HTML file">
+    <h2>1 · Source playables</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Select AppLovin playable HTML files">
       <div id="dropBody">
-        <div class="big">Drop AppLovin HTML here</div>
-        <div class="small">or click to browse — index.html / playable.html</div>
+        <div class="big">Drop AppLovin HTML files here</div>
+        <div class="small">or click to browse — one or more index.html / playable.html</div>
       </div>
-      <input type="file" id="file" accept=".html,.htm,text/html">
+      <input type="file" id="file" accept=".html,.htm,text/html" multiple>
     </div>
     <div class="err" id="err"></div>
   </div>
@@ -237,15 +242,9 @@
 
   <div class="card report" id="report">
     <h2>3 · Result</h2>
-    <div class="srcline">
-      <span class="tag src" id="srcTag">applovin</span>
-      <span class="arrow" style="color:var(--faint)">converted to</span>
-      <span class="tag tgt">google ads</span>
-    </div>
-    <ul class="log" id="log"></ul>
-    <div class="files" id="files"></div>
+    <div id="reportBody"></div>
     <div class="actions" style="margin-top:20px">
-      <button class="btn-primary" id="download">Download google_playable.zip</button>
+      <button class="btn-primary" id="download">Download zip</button>
     </div>
     <p class="note">
       Validate the result in the <code>Google Playable Ad Testing Tool</code> before launch. Images stay
@@ -259,12 +258,15 @@
   const $ = (id) => document.getElementById(id);
   const drop = $("drop"), fileInput = $("file");
   const convertBtn = $("convert"), resetBtn = $("reset"), downloadBtn = $("download");
-  const report = $("report"), logEl = $("log"), filesEl = $("files"), errEl = $("err");
+  const report = $("report"), reportBody = $("reportBody"), errEl = $("err");
   const stages = [...document.querySelectorAll(".stage")];
 
-  let source = null;   // { name, text }
-  let result = null;   // { html, files, source, log }
-  let zipBlob = null;
+  const PARENT_ZIP_NAME = "Converted_Playables_For_GoogleAds.zip";
+
+  let sources = [];        // [{ name, text, size }]
+  let results = [];        // [{ name, zipName, source, html, files, log, zipBlob }]
+  let downloadBlob = null; // blob the download button hands out
+  let downloadName = "";   // its filename
 
   const kb = (bytes) => (bytes / 1024).toFixed(1) + " KB";
   const byteLen = (s) => {
@@ -272,6 +274,8 @@
     if (s && s.byteLength != null) return s.byteLength;
     return new Blob([s]).size;
   };
+  // Strip the .html/.htm extension to build "<original>_GoogleAds.zip".
+  const zipNameFor = (name) => name.replace(/\.html?$/i, "") + "_GoogleAds.zip";
 
   function showError(msg) {
     errEl.textContent = msg;
@@ -279,33 +283,55 @@
   }
   function clearError() { errEl.classList.remove("show"); errEl.textContent = ""; }
 
-  function setFile(file) {
-    clearError();
-    if (!/\.html?$/i.test(file.name)) {
-      showError("That isn't an HTML entry point. Export the playable as index.html or playable.html.");
+  function renderDrop() {
+    if (!sources.length) {
+      drop.classList.remove("has-file");
+      $("dropBody").innerHTML =
+        '<div class="big">Drop AppLovin HTML files here</div>' +
+        '<div class="small">or click to browse — one or more index.html / playable.html</div>';
+      convertBtn.disabled = true;
+      resetBtn.disabled = true;
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      source = { name: file.name, text: reader.result };
-      drop.classList.add("has-file");
-      $("dropBody").innerHTML =
-        '<div class="filechip">HTML</div>' +
-        '<div><div class="fname">' + file.name + '</div>' +
-        '<div class="fmeta">' + kb(file.size) + ' · ready to convert</div></div>';
-      convertBtn.disabled = false;
-      resetBtn.disabled = false;
+    drop.classList.add("has-file");
+    const list = sources
+      .map((s) => '<div class="fname">' + s.name + ' · ' + kb(s.size) + '</div>')
+      .join("");
+    $("dropBody").innerHTML =
+      '<div class="filechip">' + sources.length + '</div>' +
+      '<div><div class="fname">' + sources.length + ' file' + (sources.length > 1 ? 's' : '') +
+      ' · ready to convert</div><div class="filelist">' + list + '</div></div>';
+    convertBtn.disabled = false;
+    resetBtn.disabled = false;
+  }
+
+  function addFiles(fileList) {
+    clearError();
+    const files = [...fileList];
+    let pending = files.length, rejected = 0;
+    if (!pending) return;
+    const done = () => {
+      if (!--pending) {
+        if (rejected) showError(rejected + " file(s) skipped — only .html/.htm entry points are accepted.");
+        renderDrop();
+      }
     };
-    reader.onerror = () => showError("Couldn't read that file. Try re-exporting it.");
-    reader.readAsText(file);
+    files.forEach((file) => {
+      if (!/\.html?$/i.test(file.name)) { rejected++; done(); return; }
+      if (sources.some((s) => s.name === file.name)) { done(); return; } // de-dupe by name
+      const reader = new FileReader();
+      reader.onload = () => { sources.push({ name: file.name, text: reader.result, size: file.size }); done(); };
+      reader.onerror = () => { rejected++; done(); };
+      reader.readAsText(file);
+    });
   }
 
   drop.addEventListener("click", () => fileInput.click());
   drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
-  fileInput.addEventListener("change", (e) => { if (e.target.files[0]) setFile(e.target.files[0]); });
+  fileInput.addEventListener("change", (e) => { if (e.target.files.length) addFiles(e.target.files); fileInput.value = ""; });
   ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+  drop.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
 
   function lightStage(i) {
     return new Promise((res) => setTimeout(() => { if (stages[i]) stages[i].classList.add("run"); res(); }, 220));
@@ -316,28 +342,59 @@
     for (let i = 0; i < stages.length; i++) await lightStage(i);
   }
 
+  // Convert one source into a { ..., zipBlob } ready to drop into the parent zip.
+  async function convertOne(src) {
+    const r = PlayableConverter.convertToGoogleAds(src.text, { externalizeAssets: true });
+
+    // Decode embedded <img data-src122> images to loose files and rewrite
+    // the tags to relative paths (assets/<id>), matching Google's layout.
+    const extracted = PlayableConverter.extractAndRewriteImages(r.html, r.log);
+    r.html = extracted.html;
+    for (const [id, data] of Object.entries(extracted.assets)) {
+      r.files["assets/" + id] = data;
+    }
+
+    const zip = new JSZip();
+    zip.file("index.html", r.html);
+    for (const [path, content] of Object.entries(r.files)) zip.file(path, content);
+    const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+
+    return { name: src.name, zipName: zipNameFor(src.name), source: r.source, html: r.html, files: r.files, log: r.log, zipBlob };
+  }
+
   convertBtn.addEventListener("click", async () => {
     clearError();
     convertBtn.disabled = true;
     report.classList.remove("show");
     try {
       const pipeline = runPipeline();
-      result = PlayableConverter.convertToGoogleAds(source.text, { externalizeAssets: true });
 
-      // Decode embedded <img data-src122> images to loose files and rewrite
-      // the tags to relative paths (assets/<id>), matching Google's layout.
-      const extracted = PlayableConverter.extractAndRewriteImages(result.html, result.log);
-      result.html = extracted.html;
-      for (const [id, data] of Object.entries(extracted.assets)) {
-        result.files["assets/" + id] = data;
+      results = [];
+      const usedNames = new Set();
+      for (const src of sources) {
+        const res = await convertOne(src);
+        // Guard against two sources collapsing to the same zip name.
+        let zipName = res.zipName, i = 2;
+        while (usedNames.has(zipName)) zipName = res.zipName.replace(/\.zip$/i, "_" + (i++) + ".zip");
+        usedNames.add(zipName);
+        res.zipName = zipName;
+        results.push(res);
       }
 
-      const zip = new JSZip();
-      zip.file("index.html", result.html);
-      for (const [path, content] of Object.entries(result.files)) zip.file(path, content);
-      zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-      await pipeline;
+      if (results.length === 1) {
+        // Single playable — hand back its zip directly.
+        downloadBlob = results[0].zipBlob;
+        downloadName = results[0].zipName;
+      } else {
+        // Multiple playables — nest each zip inside one parent. Inner zips are
+        // already DEFLATE-compressed, so store them as-is (no double pass).
+        const parent = new JSZip();
+        for (const res of results) parent.file(res.zipName, res.zipBlob);
+        downloadBlob = await parent.generateAsync({ type: "blob", compression: "STORE" });
+        downloadName = PARENT_ZIP_NAME;
+      }
 
+      await pipeline;
       renderReport();
     } catch (e) {
       showError("Conversion failed: " + e.message);
@@ -345,37 +402,48 @@
     }
   });
 
-  function renderReport() {
-    $("srcTag").textContent = result.source;
-    logEl.innerHTML = result.log.map((l) => "<li>" + l + "</li>").join("");
-
-    const rows = [["index.html", byteLen(result.html)]];
+  function renderResult(res) {
+    const rows = [["index.html", byteLen(res.html)]];
     const bundleEntries = [];
-    for (const [p, c] of Object.entries(result.files)) {
+    for (const [p, c] of Object.entries(res.files)) {
       if (/^assets\/assets\/bundles\//.test(p)) bundleEntries.push([p, byteLen(c)]);
       else rows.push([p, byteLen(c)]);
     }
     if (bundleEntries.length) {
       const bundleTotal = bundleEntries.reduce((a, [, n]) => a + n, 0);
-      rows.push([
-        "assets/assets/bundles/ — " + bundleEntries.length + " files",
-        bundleTotal,
-      ]);
+      rows.push(["assets/assets/bundles/ — " + bundleEntries.length + " files", bundleTotal]);
     }
-    const fileCount = 1 + Object.keys(result.files).length;
-    filesEl.innerHTML =
-      rows.map(([p, n]) => '<div class="frow"><span class="p">' + p + '</span><span>' + kb(n) + "</span></div>").join("") +
-      '<div class="frow total"><span>google_playable.zip (' + fileCount + " files)</span><span>" + kb(zipBlob.size) + "</span></div>";
+    const fileCount = 1 + Object.keys(res.files).length;
+    return (
+      '<div class="result-block">' +
+      '<div class="srcline">' +
+        '<span class="tag src">' + res.source + '</span>' +
+        '<span class="arrow" style="color:var(--faint)">' + res.name + '</span>' +
+        '<span class="tag tgt">google ads</span>' +
+      '</div>' +
+      '<ul class="log">' + res.log.map((l) => "<li>" + l + "</li>").join("") + '</ul>' +
+      '<div class="files">' +
+        rows.map(([p, n]) => '<div class="frow"><span class="p">' + p + '</span><span>' + kb(n) + "</span></div>").join("") +
+        '<div class="frow total"><span>' + res.zipName + ' (' + fileCount + " files)</span><span>" + kb(res.zipBlob.size) + "</span></div>" +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderReport() {
+    reportBody.innerHTML = results.map(renderResult).join("");
+    downloadBtn.textContent = "Download " + downloadName;
 
     report.classList.add("show");
     report.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   downloadBtn.addEventListener("click", () => {
-    const url = URL.createObjectURL(zipBlob);
+    if (!downloadBlob) return;
+    const url = URL.createObjectURL(downloadBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "google_playable.zip";
+    a.download = downloadName;
     a.click();
     URL.revokeObjectURL(url);
   });
