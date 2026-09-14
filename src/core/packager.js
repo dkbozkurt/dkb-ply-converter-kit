@@ -70,6 +70,11 @@ export async function zipResult(result) {
   return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }
 
+/** Folder name for a target inside the bundle: the display name made path-safe ("RZR / Aarki" → "RZR-Aarki"). */
+export function folderNameFor(target) {
+  return target.name.replace(/\s*[\\/]+\s*/g, "-").trim();
+}
+
 /** Ensure no two jobs collapse to the same file name inside the same folder. */
 export function uniqueName(name, used) {
   let candidate = name;
@@ -89,7 +94,8 @@ export async function bundle(jobs, logText) {
     return { blob: jobs[0].blob, name: jobs[0].fileName, nested: false };
   }
   const parent = new JSZip();
-  for (const job of jobs) parent.file(`${job.target.name}/${job.fileName}`, job.blob);
+  // Folder per target — display names may contain "/" (e.g. "RZR / Aarki").
+  for (const job of jobs) parent.file(`${folderNameFor(job.target)}/${job.fileName}`, job.blob);
   if (logText) parent.file(LOG_FILE_NAME, logText);
   const blob = await parent.generateAsync({ type: "blob", compression: "STORE" });
   return { blob, name: BUNDLE_NAME, nested: true };

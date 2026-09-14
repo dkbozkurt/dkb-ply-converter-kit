@@ -47,7 +47,7 @@ A network opts into the first section with `group: "primary"` in its definition.
 | TikTok | others | – | greyed out (coming soon) |
 | MRAID (generic) | others | – | ✅ single `index.html` |
 | AdColony | others | – | ✅ single `index.html` (2 MB cap) |
-| Aarki | others | – | ✅ single `index.html` |
+| RZR / Aarki | others | – | ✅ single `index.html` |
 | Appreciate | others | – | ✅ `index.html` + resources (4 MB cap) |
 | Remerge | others | – | ✅ `index.html` + resources |
 | Tencent | others | – | greyed out (coming soon) |
