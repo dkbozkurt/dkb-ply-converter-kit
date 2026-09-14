@@ -1,0 +1,90 @@
+@use "tokens" as *;
+
+.drop {
+  display: block;
+  border: 1.5px dashed rgba($source, 0.45);
+  border-radius: 12px;
+  padding: 34px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: rgba($source, 0.08);
+
+  &:hover,
+  &.is-over {
+    border-color: $source;
+    background: rgba($source, 0.16);
+  }
+
+  &__big {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  &__small {
+    color: $muted;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  &.has-files {
+    border-style: solid;
+    border-color: $source;
+    padding: 16px 18px;
+
+    .drop__body {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+    }
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+}
+
+.filechip {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  flex: none;
+  background: rgba($source, 0.14);
+  color: $source;
+  display: grid;
+  place-items: center;
+  font-family: $mono;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filelist {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: $mono;
+  font-size: 12.5px;
+  color: $muted;
+
+  &__name {
+    font-weight: 500;
+    color: $ink;
+    word-break: break-all;
+  }
+  &__meta {
+    color: $faint;
+  }
+}
+
+.fname {
+  font-weight: 600;
+  word-break: break-all;
+}

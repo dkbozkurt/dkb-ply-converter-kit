@@ -1,13 +1,19 @@
 {
-  "name": "playable-ads-applovin-to-googleads-converter",
-  "version": "1.0.0",
+  "name": "dkb-playable-ads-converter-kit",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
+  "description": "Cross-network playable ad converter. Load a playable exported for one ad network, get upload-ready packages for the networks you select.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
   "devDependencies": {
+    "sass": "^1.77.0",
     "vite": "^5.0.0"
   }
 }

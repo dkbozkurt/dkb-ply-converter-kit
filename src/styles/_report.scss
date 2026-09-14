@@ -1,0 +1,127 @@
+@use "tokens" as *;
+
+.report {
+  display: none;
+
+  &.is-show {
+    display: block;
+  }
+}
+
+.result {
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid $line;
+
+  &:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    font-size: 14px;
+
+    .arrow {
+      color: $faint;
+    }
+    .name {
+      color: $muted;
+      font-family: $mono;
+      font-size: 12.5px;
+      word-break: break-all;
+    }
+  }
+}
+
+.log {
+  font-family: $mono;
+  font-size: 12.5px;
+  line-height: 1.8;
+  margin: 0;
+  padding: 0;
+
+  li {
+    list-style: none;
+    color: $muted;
+
+    &::before {
+      content: "› ";
+      color: $good;
+    }
+
+    &.is-section {
+      color: $faint;
+      margin-top: 4px;
+
+      &::before {
+        content: "";
+      }
+    }
+    &.is-info {
+      color: $faint;
+      &::before {
+        content: "  ";
+      }
+    }
+    &.is-warn {
+      color: $target;
+      &::before {
+        content: "! ";
+        color: $target;
+      }
+    }
+    &.is-error {
+      color: $bad;
+      &::before {
+        content: "× ";
+        color: $bad;
+      }
+    }
+  }
+}
+
+.files {
+  margin-top: 16px;
+  border-top: 1px solid $line;
+  padding-top: 14px;
+}
+
+.frow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: $mono;
+  font-size: 13px;
+  padding: 4px 0;
+  color: $muted;
+
+  .p {
+    color: $ink;
+    word-break: break-all;
+  }
+
+  &--total {
+    margin-top: 8px;
+    font-weight: 600;
+    color: $ink;
+    border-top: 1px dashed $line;
+    padding-top: 8px;
+  }
+}
+
+.logstatus {
+  font-family: $mono;
+  font-size: 12px;
+  color: $faint;
+  margin-top: 12px;
+
+  code {
+    color: $muted;
+  }
+}

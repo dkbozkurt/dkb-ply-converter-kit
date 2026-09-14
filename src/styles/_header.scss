@@ -1,0 +1,67 @@
+@use "tokens" as *;
+
+.hero {
+  margin-bottom: 36px;
+
+  &__eyebrow {
+    font-family: $mono;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $muted;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    b {
+      color: $source;
+      font-weight: 600;
+    }
+    i {
+      color: $target;
+      font-weight: 600;
+      font-style: normal;
+    }
+    .arrow {
+      color: $faint;
+    }
+  }
+
+  &__title {
+    font-size: 40px;
+    line-height: 1.05;
+    margin: 14px 0 8px;
+    letter-spacing: -0.02em;
+    font-weight: 680;
+  }
+
+  &__subtitle {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+
+    b {
+      color: $source;
+      font-weight: 600;
+    }
+    i {
+      color: $target;
+      font-weight: 600;
+      font-style: normal;
+    }
+  }
+
+  &__lede {
+    color: $muted;
+    max-width: 62ch;
+    margin: 0;
+  }
+}
+
+@media (max-width: $bp-narrow) {
+  .hero__title {
+    font-size: 30px;
+  }
+}

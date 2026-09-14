@@ -1,0 +1,147 @@
+@use "tokens" as *;
+
+// Target-network picker: one selectable card per network.
+.networks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.network {
+  --net: #{$muted};
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid $line;
+  border-radius: $radius;
+  background: $panel-2;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.06s;
+  user-select: none;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  &__logo {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+
+    svg {
+      width: 26px;
+      height: 26px;
+      display: block;
+    }
+  }
+
+  &__body {
+    min-width: 0;
+  }
+
+  &__name {
+    display: block;
+    font-weight: 600;
+    font-size: 14.5px;
+    letter-spacing: -0.005em;
+  }
+
+  &__hint {
+    display: block;
+    font-family: $mono;
+    font-size: 11px;
+    color: $faint;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid $line-strong;
+    display: grid;
+    place-items: center;
+    transition: border-color 0.2s, background 0.2s;
+
+    &::after {
+      content: "";
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid $bg;
+      border-bottom: 2px solid $bg;
+      transform: rotate(-45deg) translate(1px, -1px);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+  }
+
+  // ---- available (selectable) ----
+  &.is-available {
+    &:hover {
+      border-color: color-mix(in srgb, var(--net) 55%, $line);
+    }
+
+    &:has(input:checked) {
+      border-color: var(--net);
+      background: color-mix(in srgb, var(--net) 10%, $panel-2);
+
+      .network__check {
+        border-color: var(--net);
+        background: var(--net);
+
+        &::after {
+          opacity: 1;
+        }
+      }
+    }
+
+    &:has(input:focus-visible) {
+      outline: 2px solid $source;
+      outline-offset: 2px;
+    }
+  }
+
+  // ---- disabled (grey) ----
+  &.is-disabled {
+    cursor: not-allowed;
+    background: $panel;
+    border-style: dashed;
+
+    .network__logo {
+      filter: grayscale(1);
+      opacity: 0.35;
+    }
+    .network__name {
+      color: $faint;
+    }
+    .network__check {
+      border-color: $line;
+      opacity: 0.5;
+    }
+  }
+}
+
+@media (max-width: $bp-narrow) {
+  .networks {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .networks {
+    grid-template-columns: 1fr;
+  }
+}

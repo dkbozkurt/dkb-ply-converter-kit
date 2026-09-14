@@ -1,0 +1,70 @@
+@use "tokens" as *;
+
+// The signature element: five stages that light up as a conversion runs.
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 32px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage {
+  border: 1px solid $line;
+  border-radius: $radius;
+  padding: 12px 12px 14px;
+  background: $panel;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s, background 0.25s;
+
+  &__n {
+    font-family: $mono;
+    font-size: 11px;
+    color: $faint;
+  }
+
+  &__t {
+    font-size: 13px;
+    margin-top: 4px;
+    color: $muted;
+    transition: color 0.25s;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 0;
+    background: $target;
+    transition: width 0.4s ease;
+  }
+
+  &.is-run {
+    border-color: $target;
+    background: $panel-2;
+
+    .stage__t {
+      color: $ink;
+    }
+    .stage__n {
+      color: $target;
+    }
+    &::after {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: $bp-narrow) {
+  .pipeline {
+    grid-template-columns: repeat(2, 1fr);
+
+    .stage:last-child {
+      grid-column: span 2;
+    }
+  }
+}

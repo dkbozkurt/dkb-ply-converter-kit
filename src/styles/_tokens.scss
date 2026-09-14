@@ -1,0 +1,50 @@
+// Design tokens. Sass variables for compile-time use, mirrored to CSS custom
+// properties in :root so runtime code (network colours) can plug into them.
+
+// Surface — a single flat dark background, no gradients.
+$bg: #1c1c1d;
+$panel: #242426;
+$panel-2: #2b2b2e;
+$line: #343437;
+$line-strong: #45454a;
+
+// Text
+$ink: #ececee;
+$muted: #9a9aa1;
+$faint: #6b6b72;
+
+// Roles (network-agnostic accents)
+$source: #3ec5c0; // "what goes in"
+$target: #f0a830; // "what comes out"
+$good: #6fc36a;
+$bad: #e06c5a;
+
+// Type
+$mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+$sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+// Shape
+$radius-sm: 6px;
+$radius: 10px;
+$radius-lg: 14px;
+
+// Layout
+$wrap: 920px;
+$bp-narrow: 640px;
+
+:root {
+  --bg: #{$bg};
+  --panel: #{$panel};
+  --panel-2: #{$panel-2};
+  --line: #{$line};
+  --line-strong: #{$line-strong};
+  --ink: #{$ink};
+  --muted: #{$muted};
+  --faint: #{$faint};
+  --source: #{$source};
+  --target: #{$target};
+  --good: #{$good};
+  --bad: #{$bad};
+  --mono: #{$mono};
+  --sans: #{$sans};
+}
