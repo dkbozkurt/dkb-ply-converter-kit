@@ -218,10 +218,16 @@ The workflow in [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-
 builds on every push to `main` and publishes `dist/` with the official Pages actions.
 
 One-time setup in the repository: **Settings → Pages → Build and deployment → Source:
-GitHub Actions**.
+GitHub Actions**. If the source is left on *Deploy from a branch*, GitHub publishes the
+raw repository root instead — the unbuilt `index.html` then points at `/src/main.js` and
+the page renders without styles.
 
-The production base path defaults to `/<repo-name>/`. For a custom domain or a
-user/organisation site set `BASE_PATH=/` when building.
+The production base path is taken from the repository name in CI (`/<repo-name>/`), so
+renaming the repo needs no config change; `REPO_BASE` in `vite.config.js` is only the
+fallback for a local `npm run build`. For a custom domain or a user/organisation site set
+`BASE_PATH=/` when building.
+
+Live site: <https://dkbozkurt.github.io/dkb-ply-converter-kit/>
 
 ## Notes
 
