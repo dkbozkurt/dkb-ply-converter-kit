@@ -1,11 +1,42 @@
 @use "tokens" as *;
 
-// Target-network picker: one selectable card per network.
+// Target-network picker: sections of selectable cards, one per network.
 .networks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 18px;
   margin-bottom: 20px;
+
+  &__group {
+    display: grid;
+    gap: 10px;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0 0;
+    font-family: $mono;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: $faint;
+
+    // hairline that runs to the right of the label
+    &::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: $line;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
 }
 
 .network {
@@ -136,12 +167,12 @@
 }
 
 @media (max-width: $bp-narrow) {
-  .networks {
+  .networks__grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 @media (max-width: 420px) {
-  .networks {
+  .networks__grid {
     grid-template-columns: 1fr;
   }
 }

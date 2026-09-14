@@ -3,6 +3,7 @@ export default {
   name: "Meta",
   color: "#0081FB",
   platformIds: ["facebook", "meta"],
+  group: "primary",
 
   target: {
     supported: false,

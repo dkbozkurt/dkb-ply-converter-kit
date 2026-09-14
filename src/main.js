@@ -2,7 +2,7 @@
 // file only knows about "sources", "targets" and the pipeline stages.
 import "./styles/main.scss";
 
-import { SOURCE_NETWORKS, TARGET_NETWORKS, SUPPORTED_TARGETS } from "./networks/index.js";
+import { SOURCE_NETWORKS, TARGET_GROUPS, SUPPORTED_TARGETS } from "./networks/index.js";
 import { detectSource, convertPlayable } from "./core/converter.js";
 import { createProcessLog } from "./core/logger.js";
 import { zipResult, zipNameFor, uniqueName, bundle, LOG_FILE_NAME } from "./core/packager.js";
@@ -168,19 +168,31 @@ drop.addEventListener("drop", (e) => {
 });
 
 // ---- step 2: targets --------------------------------------------------------
+function renderNetworkCard(n) {
+  const ok = n.target.supported;
+  const hint = ok ? n.target.format || "Ready" : n.target.hint || "Not available";
+  return (
+    `<label class="network ${ok ? "is-available" : "is-disabled"}" style="--net:${n.color}" ` +
+    `data-id="${n.id}" title="${esc(n.name)} — ${esc(hint)}">` +
+    `<input type="checkbox" name="target" value="${n.id}" ${ok ? "checked" : "disabled"}>` +
+    `<span class="network__logo">${logoFor(n.id)}</span>` +
+    `<span class="network__body"><span class="network__name">${esc(n.name)}</span>` +
+    `<span class="network__hint">${esc(hint)}</span></span>` +
+    `<span class="network__check" aria-hidden="true"></span>` +
+    "</label>"
+  );
+}
+
 function renderNetworks() {
-  networksEl.innerHTML = TARGET_NETWORKS.map((n) => {
-    const ok = n.target.supported;
-    const hint = ok ? n.target.format || "Ready" : n.target.hint || "Not available";
+  networksEl.innerHTML = TARGET_GROUPS.map((g) => {
+    const title = g.title
+      ? `<h3 class="networks__title" id="networks-${g.id}">${esc(g.title)}</h3>`
+      : "";
     return (
-      `<label class="network ${ok ? "is-available" : "is-disabled"}" style="--net:${n.color}" ` +
-      `data-id="${n.id}" title="${esc(n.name)} — ${esc(hint)}">` +
-      `<input type="checkbox" name="target" value="${n.id}" ${ok ? "checked" : "disabled"}>` +
-      `<span class="network__logo">${logoFor(n.id)}</span>` +
-      `<span class="network__body"><span class="network__name">${esc(n.name)}</span>` +
-      `<span class="network__hint">${esc(hint)}</span></span>` +
-      `<span class="network__check" aria-hidden="true"></span>` +
-      "</label>"
+      `<section class="networks__group" data-group="${g.id}"${g.title ? ` aria-labelledby="networks-${g.id}"` : ""}>` +
+      title +
+      `<div class="networks__grid">${g.networks.map(renderNetworkCard).join("")}</div>` +
+      "</section>"
     );
   }).join("");
   networksEl.addEventListener("change", syncActions);

@@ -11,6 +11,7 @@ export default {
   name: "Example",        // display name
   color: "#RRGGBB",       // brand accent used for chips and cards
   platformIds: ["example"], // values of $environment.targetPlatform this network emits
+  group: "primary",       // optional — first picker section; omit for "Others"
 
   // Optional — the kit can *read* playables exported for this network.
   source: {
@@ -36,6 +37,8 @@ export default {
   },
 };
 ```
+
+Logos live in `src/assets/logos/<id>.svg` and are picked up automatically by file name.
 
 `ctx` passed to `patch` is `{ source, log, helpers }` where `helpers` exposes
 `injectBefore`, `readTargetPlatform` and the `PLAYABLE_ADAPTER_GLOBAL` name.

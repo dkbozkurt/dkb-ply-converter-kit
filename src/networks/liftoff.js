@@ -9,6 +9,7 @@ export default {
   name: "Liftoff",
   color: "#FF6A3D",
   platformIds: ["liftoff"],
+  group: "primary",
 
   target: {
     supported: true,

@@ -5,6 +5,7 @@ export default {
   name: "Unity",
   color: "#E0E4E8",
   platformIds: ["unityads", "unity"],
+  group: "primary",
 
   source: {
     supported: true,

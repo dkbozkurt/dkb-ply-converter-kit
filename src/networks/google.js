@@ -23,6 +23,7 @@ export default {
   name: "Google",
   color: "#4285F4",
   platformIds: ["google"],
+  group: "primary",
 
   target: {
     supported: true,

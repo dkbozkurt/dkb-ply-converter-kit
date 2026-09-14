@@ -31,19 +31,33 @@ registered in [`src/networks/index.js`](src/networks/index.js). The engine itsel
 network names in it — adding a network means adding a file there (see the
 [network README](src/networks/README.md) for the shape).
 
-| Network | As source | As target |
-| --- | :-: | :-: |
-| AppLovin | ✅ | greyed out (source only for now) |
-| Unity | ✅ | greyed out (source only for now) |
-| Google | – | ✅ `index.html` + resources |
-| Meta | – | greyed out (coming soon) |
-| Liftoff | – | ✅ `ad.html` + resources |
-| Mintegral | – | greyed out (coming soon) |
-| Moloco | – | greyed out (coming soon) |
-| Vungle | – | ✅ single `ad.html` |
-| TikTok | – | greyed out (coming soon) |
-| MRAID (generic) | – | greyed out (coming soon) |
-| AdColony | – | greyed out (coming soon) |
+The target picker has two sections: the primary networks first, then **Others**.
+A network opts into the first section with `group: "primary"` in its definition.
+
+| Network | Section | As source | As target |
+| --- | --- | :-: | :-: |
+| AppLovin | primary | ✅ | greyed out (source only for now) |
+| Unity | primary | ✅ | greyed out (source only for now) |
+| Google | primary | – | ✅ `index.html` + resources |
+| Meta | primary | – | greyed out (coming soon) |
+| Liftoff | primary | – | ✅ `ad.html` + resources |
+| Mintegral | primary | – | greyed out (coming soon) |
+| Moloco | others | – | greyed out (coming soon) |
+| Vungle | others | – | ✅ single `ad.html` |
+| TikTok | others | – | greyed out (coming soon) |
+| MRAID (generic) | others | – | greyed out (coming soon) |
+| AdColony | others | – | greyed out (coming soon) |
+| Aarki | others | – | greyed out (coming soon) |
+| Appreciate | others | – | greyed out (coming soon) |
+| Remerge | others | – | greyed out (coming soon) |
+| Tencent | others | – | greyed out (coming soon) |
+| Adikteev | others | – | greyed out (coming soon) |
+| BigaBid | others | – | greyed out (coming soon) |
+| InMobi | others | – | greyed out (coming soon) |
+| Kayzen | others | – | greyed out (coming soon) |
+| Snapchat | others | – | greyed out (coming soon) |
+| The Trade Desk | others | – | greyed out (coming soon) |
+| YouAppi | others | – | greyed out (coming soon) |
 
 Unsupported targets still appear in the UI (disabled) so the picker is ready for them;
 flipping `target.supported` to `true` and adding a `patch()` enables one.

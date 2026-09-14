@@ -1,26 +1,21 @@
 // Network logos, inlined as SVG markup so they can be dropped straight into
 // the DOM (and greyed out via CSS when a network is disabled).
+// Every src/assets/logos/<network-id>.svg is picked up automatically — adding
+// a logo for a new network is just adding the file.
 // Kept separate from the network definitions so the converter core stays
 // free of bundler-specific imports and runs in plain node.
-import applovin from "../assets/logos/applovin.svg?raw";
-import unity from "../assets/logos/unity.svg?raw";
-import google from "../assets/logos/google.svg?raw";
-import meta from "../assets/logos/meta.svg?raw";
-import liftoff from "../assets/logos/liftoff.svg?raw";
-import mintegral from "../assets/logos/mintegral.svg?raw";
-import moloco from "../assets/logos/moloco.svg?raw";
-import vungle from "../assets/logos/vungle.svg?raw";
-import tiktok from "../assets/logos/tiktok.svg?raw";
-import mraid from "../assets/logos/mraid.svg?raw";
-import adcolony from "../assets/logos/adcolony.svg?raw";
 
-const LOGOS = { applovin, unity, google, meta, liftoff, mintegral, moloco, vungle, tiktok, mraid, adcolony };
+const files = import.meta.glob("../assets/logos/*.svg", { query: "?raw", import: "default", eager: true });
+
+const LOGOS = Object.fromEntries(
+  Object.entries(files).map(([path, svg]) => [path.match(/\/([^/]+)\.svg$/)[1], svg])
+);
+
+const PLACEHOLDER =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true">' +
+  '<rect width="48" height="48" rx="11" fill="currentColor" opacity=".25"/></svg>';
 
 /** SVG markup for a network id, or a generic placeholder glyph. */
 export function logoFor(id) {
-  return (
-    LOGOS[id] ||
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true">' +
-      '<rect width="48" height="48" rx="11" fill="currentColor" opacity=".25"/></svg>'
-  );
+  return LOGOS[id] || PLACEHOLDER;
 }

@@ -5,6 +5,7 @@ export default {
   name: "AppLovin",
   color: "#2D8CFF",
   platformIds: ["applovin"],
+  group: "primary",
 
   source: {
     supported: true,

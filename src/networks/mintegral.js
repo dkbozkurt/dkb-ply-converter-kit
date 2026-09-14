@@ -3,6 +3,7 @@ export default {
   name: "Mintegral",
   color: "#12B5A5",
   platformIds: ["mintegral"],
+  group: "primary",
 
   target: {
     supported: false,
