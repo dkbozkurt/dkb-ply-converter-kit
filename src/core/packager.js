@@ -16,10 +16,10 @@ export function zipNameFor(sourceName, target) {
   return sourceName.replace(/\.html?$/i, "") + "_" + target.target.zipSuffix + ".zip";
 }
 
-/** Zip a single conversion result (index.html + files). */
+/** Zip a single conversion result (entry html + files). */
 export async function zipResult(result) {
   const zip = new JSZip();
-  zip.file("index.html", result.html);
+  zip.file(result.entryName || "index.html", result.html);
   for (const [path, content] of Object.entries(result.files)) zip.file(path, content);
   return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }

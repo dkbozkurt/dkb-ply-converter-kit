@@ -26,6 +26,7 @@ export default {
 
   target: {
     supported: true,
+    format: "index.html + resources",
     platformId: "google",
     zipSuffix: "GoogleAds",
     packaging: { externalizeAssets: true, externalizeImages: true },

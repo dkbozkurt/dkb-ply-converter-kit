@@ -23,9 +23,12 @@ export default {
   target: {
     supported: true,        // false => shown greyed out in the UI
     hint: "Coming soon",    // shown on the card when not supported
+    format: "ad.html + resources", // shown on the card when supported
     platformId: "example",  // value written to $environment.targetPlatform
     zipSuffix: "Example",   // <source>_Example.zip
+    validation: "Test in …", // shown under the result
     packaging: {
+      entryName: "index.html",  // name of the entry html inside the zip
       externalizeAssets: true,  // move inline scripts/jsons/blobs to assets/*.js
       externalizeImages: true,  // decode data-src122 images to assets/<id>
     },

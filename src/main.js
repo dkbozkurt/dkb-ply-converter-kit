@@ -171,7 +171,7 @@ drop.addEventListener("drop", (e) => {
 function renderNetworks() {
   networksEl.innerHTML = TARGET_NETWORKS.map((n) => {
     const ok = n.target.supported;
-    const hint = ok ? "Ready" : n.target.hint || "Not available";
+    const hint = ok ? n.target.format || "Ready" : n.target.hint || "Not available";
     return (
       `<label class="network ${ok ? "is-available" : "is-disabled"}" style="--net:${n.color}" ` +
       `data-id="${n.id}" title="${esc(n.name)} — ${esc(hint)}">` +
@@ -290,7 +290,7 @@ function logFileName() {
 // ---- step 3: report ---------------------------------------------------------
 function renderJob(job) {
   const { result } = job;
-  const rows = [["index.html", byteLength(result.html)]];
+  const rows = [[result.entryName || "index.html", byteLength(result.html)]];
   const bundled = [];
   for (const [p, c] of Object.entries(result.files)) {
     if (/^assets\/assets\/bundles\//.test(p)) bundled.push([p, byteLength(c)]);
@@ -319,7 +319,7 @@ function renderJob(job) {
     `<ul class="log">${logHtml}</ul>` +
     '<div class="files">' +
     rows.map(([p, n]) => `<div class="frow"><span class="p">${esc(p)}</span><span>${kb(n)}</span></div>`).join("") +
-    `<div class="frow frow--total"><span>${esc(job.zipName)} (${fileCount} files)</span><span>${kb(job.zipBlob.size)}</span></div>` +
+    `<div class="frow frow--total"><span>${esc(job.zipName)} (${fileCount} file${fileCount === 1 ? "" : "s"})</span><span>${kb(job.zipBlob.size)}</span></div>` +
     "</div>" +
     "</div>"
   );
@@ -328,7 +328,7 @@ function renderJob(job) {
 function renderReport(targets) {
   reportBody.innerHTML = jobs.map(renderJob).join("");
   downloadBtn.textContent = `Download ${download.name}`;
-  const notes = targets.map((t) => t.target.validation).filter(Boolean);
+  const notes = [...new Set(targets.map((t) => t.target.validation).filter(Boolean))];
   validationNote.textContent = notes.join(" ");
   validationNote.style.display = notes.length ? "" : "none";
   report.classList.add("is-show");

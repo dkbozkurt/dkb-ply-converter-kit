@@ -35,18 +35,33 @@ network names in it — adding a network means adding a file there (see the
 | --- | :-: | :-: |
 | AppLovin | ✅ | greyed out (source only for now) |
 | Unity | ✅ | greyed out (source only for now) |
-| Google | – | ✅ |
+| Google | – | ✅ `index.html` + resources |
 | Meta | – | greyed out (coming soon) |
-| Liftoff | – | greyed out (coming soon) |
+| Liftoff | – | ✅ `ad.html` + resources |
 | Mintegral | – | greyed out (coming soon) |
 | Moloco | – | greyed out (coming soon) |
-| Vungle | – | greyed out (coming soon) |
+| Vungle | – | ✅ single `ad.html` |
 | TikTok | – | greyed out (coming soon) |
 | MRAID (generic) | – | greyed out (coming soon) |
 | AdColony | – | greyed out (coming soon) |
 
 Unsupported targets still appear in the UI (disabled) so the picker is ready for them;
 flipping `target.supported` to `true` and adding a `patch()` enables one.
+
+### Target layers
+
+| Target | SDK / CTA | Game end | Lifecycle | Packaging |
+| --- | --- | --- | --- | --- |
+| **Google** | `exitapi.js` in `<head>`, CTA → `ExitApi.exit()` | – | `luna:start` on build, `ad.orientation` meta | `index.html`, startup scripts + images externalized under `assets/` |
+| **Vungle** | Liftoff Adaptive Creative: CTA → `parent.postMessage("download","*")` | `luna:ended` → `parent.postMessage("complete","*")` | `luna:start` on build; `ad-event-pause` / `ad-event-resume` → luna pause/resume | single self-contained `ad.html` (Luna: "Single HTML or Zip") |
+| **Liftoff** | same as Vungle | same as Vungle | same as Vungle | `ad.html` + externalized resources (Luna: "Zip file with resources") |
+
+Vungle (Liftoff Monetize) and Liftoff (Liftoff Direct) share one integration layer,
+[`src/networks/shared/adaptiveCreative.js`](src/networks/shared/adaptiveCreative.js);
+only the packaging shape differs. Because Liftoff requires that `download` and
+`complete` never fire together, the adapter drops any `download` that arrives within
+2.5 s after `complete` — that swallows Luna's automatic "open store after end card"
+follow-up while a real tap on the CTA later still goes through.
 
 ## Using it
 
@@ -59,7 +74,8 @@ flipping `target.supported` to `true` and adding a `patch()` enables one.
    `Converted_Playables.zip` containing `<TargetName>/<source>_<Target>.zip` files plus
    `conversion-log.txt`.
 
-Validate Google output in the Google Playable Ad Testing Tool before launch.
+Validate Google output in the Google Playable Ad Testing Tool, and Vungle / Liftoff
+output with Liftoff's Creative Verifier, before launch.
 
 ## Debug / process logs
 

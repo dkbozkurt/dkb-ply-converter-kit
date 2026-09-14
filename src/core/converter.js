@@ -191,11 +191,13 @@ export function convertPlayable(html, { target, log, source: forcedSource } = {}
     html = extracted.html;
     for (const [id, data] of Object.entries(extracted.assets)) files[`assets/${id}`] = data;
   }
-  log.step(`Output: index.html + ${Object.keys(files).length} file(s)`);
+  const entryName = packaging.entryName || "index.html";
+  log.step(`Output: ${entryName} + ${Object.keys(files).length} file(s)`);
 
   return {
     html,
     files,
+    entryName,
     source,
     target,
     sourcePlatform: info.platform,
