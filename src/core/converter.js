@@ -13,10 +13,12 @@
 //                  startup assets, install the PlayableAdapter seam
 //   4. target    — let the target definition graft on its own layer
 //   5. package   — (optional) decode inline images to loose files
+//   6. audit     — (optional) target-defined checks over the final package,
+//                  e.g. Meta's "no external calls" rule; warnings only
 //
 // Output is { html, files } ready to be zipped by the packager.
 
-import { scanScripts, applyEdits, injectBefore, readTargetPlatform } from "./html.js";
+import { scanScripts, applyEdits, injectBefore, readTargetPlatform, findScriptSyntaxErrors } from "./html.js";
 import { extractAndRewriteImages } from "./images.js";
 import { SOURCE_NETWORKS, networkForPlatform } from "../networks/index.js";
 
@@ -69,6 +71,16 @@ function assetKind(attrs, body) {
   return null;
 }
 
+// Luna dev-only helpers that ship inert in production exports but reference
+// remote hosts (console.re remote logging, spector.js WebGL inspector, the
+// ?startup timing probe). Networks that forbid external references
+// (Mintegral, Meta, Snapchat) flag those URLs, so they are always removed.
+const DEV_TOOLING_RULES = [
+  /insertYourRemoteDebuggingTokenHere/,
+  /spectorjs|SPECTOR\.Spector/,
+  /window\.lunaStartup\s*=/,
+];
+
 export function analyze(html) {
   const detected = detectSource(html);
   const source = detected.network;
@@ -76,17 +88,20 @@ export function analyze(html) {
 
   const scripts = scanScripts(html);
   const networkBlocks = [];
+  const devBlocks = [];
   const assetBlocks = [];
   for (const s of scripts) {
     if (s.external) continue;
     if (stripRules.some((re) => re.test(s.body))) {
       networkBlocks.push(s);
+    } else if (DEV_TOOLING_RULES.some((re) => re.test(s.body))) {
+      devBlocks.push(s);
     } else {
       const kind = assetKind(s.attrs, s.body);
       if (kind) assetBlocks.push({ kind, ...s });
     }
   }
-  return { ...detected, source, scripts, networkBlocks, assetBlocks };
+  return { ...detected, source, scripts, networkBlocks, devBlocks, assetBlocks };
 }
 
 // --- Neutral stage helpers --------------------------------------------------
@@ -151,10 +166,26 @@ export function convertPlayable(html, { target, log, source: forcedSource } = {}
     log.warn(`No known source network markers found${info.platform ? ` (targetPlatform="${info.platform}")` : ""}; applying target layer only`);
   }
   if (source && source.id === target.id) {
+    if (target.target.passthrough) {
+      // The loaded file is already a build for this network: hand it back
+      // unchanged, just renamed. (Loading a *different* source and targeting
+      // this network still runs the full pipeline below.)
+      log.step(`Loaded file is already a ${target.name} build — passed through unchanged, only renamed with _${target.target.zipSuffix}`);
+      return {
+        html,
+        files: {},
+        entryName: (target.target.packaging && target.target.packaging.entryName) || "index.html",
+        source,
+        target,
+        sourcePlatform: info.platform,
+        auditPassed: null,
+        passthrough: true,
+      };
+    }
     log.warn(`Source and target are both ${target.name}; the network layer will be re-applied`);
   }
   log.info(`Entry point: ${html.length.toLocaleString()} chars, ${info.scripts.length} <script> blocks ` +
-    `(${info.networkBlocks.length} network, ${info.assetBlocks.length} startup-asset)`);
+    `(${info.networkBlocks.length} network, ${info.devBlocks.length} dev-tooling, ${info.assetBlocks.length} startup-asset)`);
 
   // 2 · strip
   log.section("strip source layer");
@@ -169,6 +200,10 @@ export function convertPlayable(html, { target, log, source: forcedSource } = {}
   log.section("neutral adapter");
   const packaging = target.target.packaging || {};
   let files = {};
+  if (info.devBlocks.length) {
+    edits.push(...info.devBlocks.map((b) => ({ start: b.start, end: b.end, text: "" })));
+    log.step(`Removed ${info.devBlocks.length} inert dev-tooling block(s) (remote debugging / spector / startup probe) that reference external hosts`);
+  }
   if (packaging.externalizeAssets) {
     const ext = externalizeAssets(info.assetBlocks, log);
     files = ext.files;
@@ -182,7 +217,20 @@ export function convertPlayable(html, { target, log, source: forcedSource } = {}
 
   // 4 · target layer
   log.section(`target layer · ${target.name}`);
-  html = target.target.patch(html, { source, log, helpers });
+  // `files` is handed to the target so it can add sidecar files (e.g.
+  // Snapchat's config.json) next to the entry html.
+  html = target.target.patch(html, { source, log, helpers, files });
+
+  // Parse-check every inline script so a broken injected layer surfaces here
+  // instead of as a silently dead <script> in the ad network's container.
+  const syntaxErrors = findScriptSyntaxErrors(html);
+  if (syntaxErrors.length) {
+    for (const e of syntaxErrors) {
+      log.error(`Inline <script> #${e.index} does not parse: ${e.error} — "${e.preview}…"`);
+    }
+    throw new Error(`${syntaxErrors.length} inline <script> block(s) fail to parse after the ${target.name} layer`);
+  }
+  log.step(`Parse-checked ${scanScripts(html).filter((b) => !b.external).length} inline <script> blocks`);
 
   // 5 · package
   log.section("package");
@@ -194,10 +242,18 @@ export function convertPlayable(html, { target, log, source: forcedSource } = {}
   const entryName = packaging.entryName || "index.html";
   log.step(`Output: ${entryName} + ${Object.keys(files).length} file(s)`);
 
+  // 6 · optional network audit over the final package (warnings only)
+  let auditPassed = null;
+  if (typeof target.target.audit === "function") {
+    log.section(`audit · ${target.name}`);
+    auditPassed = target.target.audit({ html, files, entryName, log }) !== false;
+  }
+
   return {
     html,
     files,
     entryName,
+    auditPassed,
     source,
     target,
     sourcePlatform: info.platform,

@@ -26,21 +26,63 @@ export default {
     hint: "Coming soon",    // shown on the card when not supported
     format: "ad.html + resources", // shown on the card when supported
     platformId: "example",  // value written to $environment.targetPlatform
-    zipSuffix: "Example",   // <source>_Example.zip
+    zipSuffix: "Example",   // <source>_Example.zip (or .html when packaging.raw)
     validation: "Test in …", // shown under the result
+    passthrough: false,     // true => a source that *is* this network is returned
+                            //         untouched (renamed only); other sources convert
     packaging: {
       entryName: "index.html",  // name of the entry html inside the zip
       externalizeAssets: true,  // move inline scripts/jsons/blobs to assets/*.js
       externalizeImages: true,  // decode data-src122 images to assets/<id>
+      raw: false,               // true => deliver the html itself, no zip (AppLovin, Unity)
+      safeName: false,          // true => output name limited to [A-Za-z0-9_] (Mintegral)
+      namedFolder: false,       // true => <Name>.zip holds <Name>/<Name>.html (Mintegral)
     },
     patch(html, ctx) { /* inject SDK, CTA, lifecycle — return new html */ },
+    audit(pkg) { /* optional: check the final package, return false to flag warnings */ },
   },
 };
 ```
 
 Logos live in `src/assets/logos/<id>.svg` and are picked up automatically by file name.
 
-`ctx` passed to `patch` is `{ source, log, helpers }` where `helpers` exposes
-`injectBefore`, `readTargetPlatform` and the `PLAYABLE_ADAPTER_GLOBAL` name.
+`ctx` passed to `patch` is `{ source, log, helpers, files }` where `helpers` exposes
+`injectBefore`, `readTargetPlatform` and the `PLAYABLE_ADAPTER_GLOBAL` name, and
+`files` is the package's loose-file map — add to it to ship sidecar files next to
+the entry html (Snapchat puts its `config.json` there).
+
+### Shared layers
+
+- `shared/mraid.js` — `mraidTarget({ name, platformId, zipSuffix, shape, maxMB, validation })`
+  returns a complete `target` block for any MRAID host (Luna's own MRAID watcher + CTA,
+  `mraid.js` declaration, size audit). `shape` is `"single"` (inline `index.html`) or
+  `"zip"` (`index.html` + externalized resources). See `aarki.js` (one-liner) and
+  `appreciate.js` (zip shape).
+- `shared/adaptiveCreative.js` — Liftoff / Vungle postMessage layer.
+- `shared/audit.js` — `createPackageAudit({ label, maxBytes, maxFiles, forbidMraidScript, allowWindowOpen, forbidConsoleOverride })`
+  for networks that don't use `mraidTarget` but still need the external-reference / size
+  checks (Meta, Snapchat, Mintegral).
+
+### Packaging shapes
+
+`packageResult` / `layoutResult` in `src/core/packager.js` read the `packaging` flags:
+the default is a DEFLATE zip of `entryName` + `files`; `raw` returns the html as the
+download itself; `namedFolder` rewrites the layout to `<Name>/<Name>.html` using the
+final (possibly `safeName`-sanitised) output name. `mintegral.js` uses all three
+Mintegral-specific flags, `applovin.js` / `unity.js` use `raw` + `passthrough`.
+
+The engine also strips Luna's inert dev-tooling blocks (remote debugging, spector.js,
+startup probe) before any target layer runs — see `DEV_TOOLING_RULES` in
+`src/core/converter.js` if a future export ships another one.
 Every target should route its CTA through `window.PlayableAdapter.exit()` so
 the neutral adapter layer stays the single seam between game and network.
+
+After `patch` runs, the engine parse-checks every inline `<script>` in the
+result and fails the conversion if one does not compile — keep injected
+snippets small and test them with `node -e 'new Function(\`…\`)'` if in doubt.
+
+`audit(pkg)` is optional and runs last, over the finished package:
+`pkg` is `{ html, files, entryName, log }`. Log findings with `log.warn` /
+`log.info` and return `false` when something needs the user's attention — the
+result card then shows an "audit warnings" badge instead of "audit passed".
+See `meta.js` for an example (external references, redirects, size limits).

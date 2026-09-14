@@ -5,7 +5,7 @@ import "./styles/main.scss";
 import { SOURCE_NETWORKS, TARGET_GROUPS, SUPPORTED_TARGETS } from "./networks/index.js";
 import { detectSource, convertPlayable } from "./core/converter.js";
 import { createProcessLog } from "./core/logger.js";
-import { zipResult, zipNameFor, uniqueName, bundle, LOG_FILE_NAME } from "./core/packager.js";
+import { packageResult, layoutResult, outputNameFor, uniqueName, bundle, LOG_FILE_NAME } from "./core/packager.js";
 import { byteLength } from "./core/html.js";
 import { logoFor } from "./ui/logos.js";
 import { persistLog, DEV_LOG_ENABLED } from "./ui/devLogSink.js";
@@ -28,7 +28,7 @@ const stages = [...document.querySelectorAll(".stage")];
 
 // ---- state ------------------------------------------------------------------
 let sources = []; // [{ name, text, size, source: networkDef|null, platform }]
-let jobs = []; // [{ name, zipName, result, zipBlob, log: scope }]
+let jobs = []; // [{ name, fileName, result, blob, log: scope, target }]
 let download = null; // { blob, name }
 let processLog = null;
 
@@ -174,7 +174,7 @@ function renderNetworkCard(n) {
   return (
     `<label class="network ${ok ? "is-available" : "is-disabled"}" style="--net:${n.color}" ` +
     `data-id="${n.id}" title="${esc(n.name)} — ${esc(hint)}">` +
-    `<input type="checkbox" name="target" value="${n.id}" ${ok ? "checked" : "disabled"}>` +
+    `<input type="checkbox" name="target" value="${n.id}" ${ok ? "" : "disabled"}>` +
     `<span class="network__logo">${logoFor(n.id)}</span>` +
     `<span class="network__body"><span class="network__name">${esc(n.name)}</span>` +
     `<span class="network__hint">${esc(hint)}</span></span>` +
@@ -250,12 +250,14 @@ convertBtn.addEventListener("click", async () => {
       for (const target of targets) {
         const scope = processLog.scope(`${src.name} → ${target.name}`);
         try {
-          const result = convertPlayable(src.text, { target, log: scope });
-          const zipBlob = await zipResult(result);
+          const raw = convertPlayable(src.text, { target, log: scope });
           if (!used.has(target.id)) used.set(target.id, new Set());
-          const zipName = uniqueName(zipNameFor(src.name, target), used.get(target.id));
-          scope.step(`Zipped → ${zipName} (${kb(zipBlob.size)})`);
-          jobs.push({ name: src.name, zipName, result, zipBlob, log: scope, target });
+          const fileName = uniqueName(outputNameFor(src.name, target), used.get(target.id));
+          const result = layoutResult(raw, fileName);
+          if (result !== raw) scope.step(`Laid out as ${fileName.replace(/\.zip$/i, "")}/ (folder and html named after the zip)`);
+          const blob = await packageResult(result);
+          scope.step(`${/\.zip$/i.test(fileName) ? "Zipped" : "Saved"} → ${fileName} (${kb(blob.size)})`);
+          jobs.push({ name: src.name, fileName, result, blob, log: scope, target });
         } catch (e) {
           scope.error(`Conversion failed: ${e.message}`);
           throw e;
@@ -302,7 +304,8 @@ function logFileName() {
 // ---- step 3: report ---------------------------------------------------------
 function renderJob(job) {
   const { result } = job;
-  const rows = [[result.entryName || "index.html", byteLength(result.html)]];
+  const isRaw = /\.html?$/i.test(job.fileName); // single-file target: the html *is* the download
+  const rows = [[isRaw ? job.fileName : result.entryName || "index.html", byteLength(result.html)]];
   const bundled = [];
   for (const [p, c] of Object.entries(result.files)) {
     if (/^assets\/assets\/bundles\//.test(p)) bundled.push([p, byteLength(c)]);
@@ -327,11 +330,18 @@ function renderJob(job) {
     `<span class="name">${esc(job.name)}</span>` +
     '<span class="arrow">▶</span>' +
     chip(job.target) +
+    (result.passthrough
+      ? '<span class="audit audit--ok">passed through</span>'
+      : result.auditPassed === null || result.auditPassed === undefined
+        ? ""
+        : `<span class="audit ${result.auditPassed ? "audit--ok" : "audit--warn"}">${
+            result.auditPassed ? "audit passed" : "audit warnings"
+          }</span>`) +
     "</div>" +
     `<ul class="log">${logHtml}</ul>` +
     '<div class="files">' +
     rows.map(([p, n]) => `<div class="frow"><span class="p">${esc(p)}</span><span>${kb(n)}</span></div>`).join("") +
-    `<div class="frow frow--total"><span>${esc(job.zipName)} (${fileCount} file${fileCount === 1 ? "" : "s"})</span><span>${kb(job.zipBlob.size)}</span></div>` +
+    `<div class="frow frow--total"><span>${esc(job.fileName)} (${fileCount} file${fileCount === 1 ? "" : "s"})</span><span>${kb(job.blob.size)}</span></div>` +
     "</div>" +
     "</div>"
   );
@@ -341,7 +351,10 @@ function renderReport(targets) {
   reportBody.innerHTML = jobs.map(renderJob).join("");
   downloadBtn.textContent = `Download ${download.name}`;
   const notes = [...new Set(targets.map((t) => t.target.validation).filter(Boolean))];
-  validationNote.textContent = notes.join(" ");
+  validationNote.innerHTML =
+    notes.length === 1
+      ? esc(notes[0])
+      : `Before launch, validate each package in its network's test tool:<ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`;
   validationNote.style.display = notes.length ? "" : "none";
   report.classList.add("is-show");
   report.scrollIntoView({ behavior: "smooth", block: "nearest" });

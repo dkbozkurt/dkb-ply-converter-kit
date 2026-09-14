@@ -16,7 +16,7 @@ const LIFECYCLE =
 const CTA =
   "<script>window.PlayableAdapter.exit=function(){window.ExitApi&&window.ExitApi.exit()}," +
   'window.addEventListener("luna:build",(()=>{Bridge.ready((()=>{' +
-  "Luna.Unity.Playable.InstallFullGame=function(){window.PlayableAdapter.exit()}})))}))</script>";
+  "Luna.Unity.Playable.InstallFullGame=function(){window.PlayableAdapter.exit()}}))}))</script>";
 
 export default {
   id: "google",

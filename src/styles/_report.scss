@@ -36,6 +36,24 @@
       font-size: 12.5px;
       word-break: break-all;
     }
+    .audit {
+      margin-left: auto;
+      font-family: $mono;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid;
+
+      &--ok {
+        color: $good;
+        border-color: rgba($good, 0.4);
+      }
+      &--warn {
+        color: $target;
+        border-color: rgba($target, 0.4);
+      }
+    }
   }
 }
 

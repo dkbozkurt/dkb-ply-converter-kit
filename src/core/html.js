@@ -19,6 +19,28 @@ export function scanScripts(html) {
   return blocks;
 }
 
+/**
+ * Parse-check every inline classic <script> body. Returns the list of
+ * { index, error, preview } for blocks that fail to parse. Catches the
+ * "one stray paren in an injected layer" class of bug that otherwise makes
+ * the whole block silently dead at runtime.
+ */
+export function findScriptSyntaxErrors(html) {
+  const errors = [];
+  scanScripts(html).forEach((b, index) => {
+    if (b.external) return;
+    const type = (b.attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1];
+    if (type && !/^(?:text|application)\/javascript$/i.test(type)) return; // modules, JSON, templates…
+    try {
+      // eslint-disable-next-line no-new-func
+      new Function(b.body);
+    } catch (e) {
+      errors.push({ index, error: String(e && e.message ? e.message : e), preview: b.body.slice(0, 80) });
+    }
+  });
+  return errors;
+}
+
 /** Apply { start, end, text } replacements from the back so offsets stay valid. */
 export function applyEdits(html, edits) {
   const sorted = [...edits].sort((a, b) => b.start - a.start);

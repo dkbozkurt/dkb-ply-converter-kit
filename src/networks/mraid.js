@@ -1,6 +1,9 @@
 // Generic MRAID target — the IAB standard rather than a specific network.
-// Several networks accept plain MRAID playables; the shared MRAID rules in
-// ./shared/mraid.js describe the integration blocks such a build carries.
+// Luna lists this as "MRAID (generic build) · single HTML · platform-dependent
+// size". Use it for any MRAID host that isn't listed separately (Chartboost,
+// ironSource / LevelPlay, Smadex, MyTarget, …).
+
+import { mraidTarget } from "./shared/mraid.js";
 
 export default {
   id: "mraid",
@@ -8,10 +11,11 @@ export default {
   color: "#8FA3B8",
   platformIds: ["mraid"],
 
-  target: {
-    supported: false,
-    hint: "Coming soon",
+  target: mraidTarget({
+    name: "MRAID",
     platformId: "mraid",
     zipSuffix: "MRAID",
-  },
+    shape: "single",
+    // no maxMB: the cap depends on the receiving host
+  }),
 };
